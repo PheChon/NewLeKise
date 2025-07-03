@@ -47,7 +47,48 @@ esp_err_t writeDataWithRetry(uint16_t start_address, uint16_t value, uint8_t max
 }
 
 // --- CORRECTED FUNCTION ---
-// Added 1000ms delays between each parameter write
+// Modified printf to show detailed schedule values
+esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t schedule_amount, uint8_t step_num) {
+    const uint16_t first_schedule_register = 0xE092;
+
+    for (uint8_t i = 0; i < schedule_amount; i++)
+    {
+        esp_task_wdt_reset();
+        uint8_t schedule_no = schedules[i].schedule_no;
+        uint16_t register_address = first_schedule_register + (schedule_no - 1) * 3;
+
+        // Print detailed log only for active schedules during initial config
+        if (step_num != 0 && schedules[i].duration_s > 0) {
+             Serial.printf("  %d.%d Setting Schedule %d: Duration=%us, Attended=%d%%, Unattended=%d%%\n", 
+                            step_num, i + 1, schedules[i].schedule_no, schedules[i].duration_s, schedules[i].attended_power, schedules[i].unattended_power);
+        }
+
+        // Write Duration
+        if (writeDataWithRetry(register_address, schedules[i].duration_s, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
+            Serial.printf("Duration of slot %d: ERROR\n", schedule_no);
+            return ESP_FAIL;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        // Write Attended power
+        if (writeDataWithRetry(register_address + 1, schedules[i].attended_power, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
+            Serial.printf("Attended power of slot %d: ERROR\n", schedule_no);
+            return ESP_FAIL;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        // Write Unattended power
+        if (writeDataWithRetry(register_address + 2, schedules[i].unattended_power, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
+            Serial.printf("Unattended power of slot %d: ERROR\n", schedule_no);
+            return ESP_FAIL;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    return ESP_OK;
+}
+
+
 esp_err_t setLithiumBattery(const deviceSettingPack &setting, uint8_t step_num) {
     uint8_t sub_step = 1;
     
@@ -78,42 +119,6 @@ esp_err_t setLithiumBattery(const deviceSettingPack &setting, uint8_t step_num) 
     if (step_num != 0) Serial.printf("  %d.%d Writing Battery Type to Lithium (0x11) at address 0xE004\n", step_num, sub_step++);
     if (writeDataWithRetry(0xE004, 0x0011, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
     vTaskDelay(pdMS_TO_TICKS(1000));
-
-    return ESP_OK;
-}
-
-
-esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t schedule_amount, uint8_t step_num) {
-    const uint16_t first_schedule_register = 0xE092;
-
-    for (uint8_t i = 0; i < schedule_amount; i++)
-    {
-        esp_task_wdt_reset();
-        uint8_t schedule_no = schedules[i].schedule_no;
-        uint16_t register_address = first_schedule_register + (schedule_no - 1) * 3;
-
-        if (step_num != 0 && schedules[i].duration_s > 0) {
-             Serial.printf("  %d.%d Setting Schedule %d...\n", step_num, i + 1, schedules[i].schedule_no);
-        }
-
-        if (writeDataWithRetry(register_address, schedules[i].duration_s, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
-            Serial.printf("Duration of slot %d: ERROR\n", schedule_no);
-            return ESP_FAIL;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        if (writeDataWithRetry(register_address + 1, schedules[i].attended_power, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
-            Serial.printf("Attended power of slot %d: ERROR\n", schedule_no);
-            return ESP_FAIL;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        if (writeDataWithRetry(register_address + 2, schedules[i].unattended_power, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
-            Serial.printf("Unattended power of slot %d: ERROR\n", schedule_no);
-            return ESP_FAIL;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
 
     return ESP_OK;
 }
