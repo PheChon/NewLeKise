@@ -71,8 +71,8 @@ loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
 };
 // ... (rest of the variables are unchanged) ...
 wifiConfig myWiFi = {
-    .ssid = "1729",
-    .password = "88888888",
+    .ssid = "1729",   //lekise_solar
+    .password = "88888888",//idealab2023
 };
 
 MqttConfig myMQTT = {

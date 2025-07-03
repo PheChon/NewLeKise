@@ -95,7 +95,7 @@ void loop()
     // if (TimeStartNewCurrent = 5 && !NewCurrent)
     // {
     //     demoLoadRampDown();
-    //     Serial.println("ควย");
+    //     Serial.println("setManualLoadPowerWithDuration");
     //     NewCurrent = true;
     // }
     
