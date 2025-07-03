@@ -60,8 +60,8 @@ deviceSettingPack device_setting = {
 
 loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
     {1, 10800, 100, 100}, // 3 h
-    {2, 32400, 100, 100}, // 9 h
-    {3, 0, 0, 0},
+    {2, 32400, 70, 70}, // 7 h
+    {3, 7200, 100, 100},  // 2 h
     {4, 0, 0, 0},
     {5, 0, 0, 0},
     {6, 0, 0, 0},

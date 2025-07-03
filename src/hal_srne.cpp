@@ -47,7 +47,50 @@ esp_err_t writeDataWithRetry(uint16_t start_address, uint16_t value, uint8_t max
 }
 
 // --- CORRECTED FUNCTION ---
-// Modified printf to show detailed schedule values
+esp_err_t setManualLoadPowerWithDuration(uint8_t power, uint16_t duration_s) {
+    const uint8_t deviceAddress = 0x01;
+    const uint16_t startAddress = 0xDF0A;
+    const uint16_t numRegisters = 2;
+    const uint8_t byteCount = 4;
+
+    uint8_t frame[13];
+    
+    uint8_t payload[4];
+    payload[0] = 0x00;
+    payload[1] = power;
+    payload[2] = (duration_s >> 8) & 0xFF;
+    payload[3] = duration_s & 0xFF;
+
+    frame[0] = deviceAddress;
+    frame[1] = 0x10; // Function Code: Write Multiple Registers
+    frame[2] = (startAddress >> 8) & 0xFF;
+    frame[3] = startAddress & 0xFF;
+    frame[4] = (numRegisters >> 8) & 0xFF;
+    frame[5] = numRegisters & 0xFF;
+    frame[6] = byteCount;
+    memcpy(&frame[7], payload, byteCount);
+
+    uint16_t crc;
+    calculateCRC16(frame, 11, crc);
+    frame[11] = crc & 0xFF;
+    frame[12] = (crc >> 8) & 0xFF;
+
+    while(srne_serial.available()) srne_serial.read();
+    srne_serial.write(frame, sizeof(frame));
+    srne_serial.flush();
+
+    uint8_t response[8];
+    srne_serial.setTimeout(100);
+    size_t received_count = srne_serial.readBytes(response, sizeof(response));
+
+    if (received_count < sizeof(response)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    
+    return ESP_OK;
+}
+
+// Removed the filter condition to log all 9 schedule settings
 esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t schedule_amount, uint8_t step_num) {
     const uint16_t first_schedule_register = 0xE092;
 
@@ -57,27 +100,27 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
         uint8_t schedule_no = schedules[i].schedule_no;
         uint16_t register_address = first_schedule_register + (schedule_no - 1) * 3;
 
-        // Print detailed log only for active schedules during initial config
-        if (step_num != 0 && schedules[i].duration_s > 0) {
+        // Print log for every schedule, even if duration is 0
+        if (step_num != 0) {
              Serial.printf("  %d.%d Setting Schedule %d: Duration=%us, Attended=%d%%, Unattended=%d%%\n", 
                             step_num, i + 1, schedules[i].schedule_no, schedules[i].duration_s, schedules[i].attended_power, schedules[i].unattended_power);
         }
 
-        // Write Duration
+        // 1) Duration
         if (writeDataWithRetry(register_address, schedules[i].duration_s, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
             Serial.printf("Duration of slot %d: ERROR\n", schedule_no);
             return ESP_FAIL;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        // Write Attended power
+        // 2) Attended power
         if (writeDataWithRetry(register_address + 1, schedules[i].attended_power, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
             Serial.printf("Attended power of slot %d: ERROR\n", schedule_no);
             return ESP_FAIL;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        // Write Unattended power
+        // 3) Unattended power
         if (writeDataWithRetry(register_address + 2, schedules[i].unattended_power, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
             Serial.printf("Unattended power of slot %d: ERROR\n", schedule_no);
             return ESP_FAIL;

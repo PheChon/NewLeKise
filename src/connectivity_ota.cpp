@@ -64,9 +64,12 @@ esp_err_t setupMQTT(MqttConfig mqtt_parameter)
     return ESP_FAIL;
 }
 
+// --- CORRECTED FUNCTION ---
+// Implemented a self-healing mechanism via esp_restart()
 void keepWiFiMqttAlive(void *parameter)
 {
     client.setKeepAlive(60);
+    const int max_mqtt_retries = 5;
 
     for (;;)
     {
@@ -74,47 +77,55 @@ void keepWiFiMqttAlive(void *parameter)
 
         if (WiFi.status() != WL_CONNECTED)
         {
-            Serial.println("⚠️ WiFi Disconnected! keep-alive task will wait for reconnect.");
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            Serial.println("⚠️ WiFi Disconnected! Waiting for system to reconnect...");
+            vTaskDelay(pdMS_TO_TICKS(2000));
             continue;
         }
 
         if (!client.connected())
         {
-            Serial.println("⚠️ MQTT Disconnected. Attempting to connect...");
+            Serial.println("⚠️ MQTT Disconnected. Attempting to reconnect...");
             
             bool mqttReconnected = false;
-            for (uint8_t i = 0; i < 5; i++)
+            for (uint8_t i = 0; i < max_mqtt_retries; i++)
             {
                 if (WiFi.status() != WL_CONNECTED) {
-                    Serial.println("❌ WiFi disconnected during MQTT reconnect attempt. Aborting.");
+                    Serial.println("❌ WiFi disconnected during MQTT reconnect. Aborting this cycle.");
                     break; 
                 }
+                
+                Serial.printf("   - MQTT Reconnect Attempt %d/%d...\n", i + 1, max_mqtt_retries);
 
+                // Attempt to connect
                 if (client.connect(myMQTT.client_name, myMQTT.username, myMQTT.password))
                 {
                     mqttReconnected = true;
                     Serial.println("✅ MQTT Reconnected!");
-                    break;
+                    break; // Exit the for-loop
                 }
                 
-                Serial.print("❌ MQTT connection failed, rc=");
+                Serial.print("   -> Connection failed, rc=");
                 Serial.print(client.state());
                 Serial.println(". Retrying in 3 seconds...");
                 vTaskDelay(pdMS_TO_TICKS(3000));
             }
 
+            // *** THE CRUCIAL FIX ***
+            // If MQTT still fails after many retries, assume an unrecoverable state and restart.
             if (!mqttReconnected) {
-                 vTaskDelay(pdMS_TO_TICKS(5000));
-                 continue;
+                Serial.println("❌ Failed to reconnect to MQTT after multiple attempts. Network stack may be unstable.");
+                Serial.println("🔄 Restarting device to recover...");
+                vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow log message to be sent
+                esp_restart();
             }
         }
-        
-        if (client.connected())
+        else 
         {
             if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(100)) == pdTRUE)
             {
-                client.loop();
+                if (!client.loop()) {
+                    Serial.println("⚠️ client.loop() returned false, connection likely lost.");
+                }
                 xSemaphoreGive(mqttMutex);
             }
         }
@@ -123,10 +134,9 @@ void keepWiFiMqttAlive(void *parameter)
     }
 }
 
-// --- CORRECTED FUNCTION ---
+
 esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_data, const batteryDataPack &battery_data, const timeDataPack &time_data, const char *publish_topic)
 {
-    // Increased size to accommodate the timestamp
     const uint16_t PACKAGE_SIZE = 384; 
     const TickType_t publishTimeout = pdMS_TO_TICKS(500);
 
@@ -149,7 +159,6 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
     doc["bt"] = battery_data.battery_temperature;
     doc["cw"] = battery_data.charge_wh;
 
-    // --- ADDED TIMESTAMP ---
     char timestamp[25];
     snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 
              time_data.year, time_data.month, time_data.day, 
