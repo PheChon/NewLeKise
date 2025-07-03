@@ -14,7 +14,7 @@ static SemaphoreHandle_t mqttMutex = xSemaphoreCreateMutex();
 esp_err_t setupWiFi(wifiConfig wifi_parameter)
 {
     WiFi.mode(WIFI_STA);
-    WiFi.setAutoReconnect(true); // Keep auto-reconnect enabled for the underlying system
+    WiFi.setAutoReconnect(true);
     WiFi.begin(wifi_parameter.ssid, wifi_parameter.password);
 
     Serial.print("📡 Connecting to WiFi...");
@@ -44,7 +44,6 @@ esp_err_t setupMQTT(MqttConfig mqtt_parameter)
 {
     client.setServer(mqtt_parameter.server, mqtt_parameter.port);
     
-    // Only try to connect if WiFi is already available at setup
     if (WiFi.status() == WL_CONNECTED)
     {
         Serial.print("🌐 Connecting to MQTT...");
@@ -62,37 +61,31 @@ esp_err_t setupMQTT(MqttConfig mqtt_parameter)
     }
     
     Serial.println("WiFi not available during setup, MQTT connection will be attempted by keep-alive task.");
-    return ESP_FAIL; // It's not an error, but setup didn't complete the connection.
+    return ESP_FAIL;
 }
 
 void keepWiFiMqttAlive(void *parameter)
 {
-    client.setKeepAlive(60); // seconds
+    client.setKeepAlive(60);
 
     for (;;)
     {
         esp_task_wdt_reset();
 
-        // 1. Check WiFi connection status
         if (WiFi.status() != WL_CONNECTED)
         {
             Serial.println("⚠️ WiFi Disconnected! keep-alive task will wait for reconnect.");
-            // We rely on WiFi.setAutoReconnect(true) to handle this.
-            // The loop will wait here until WiFi is back.
             vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
-        // 2. If WiFi is connected, check MQTT connection status
         if (!client.connected())
         {
             Serial.println("⚠️ MQTT Disconnected. Attempting to connect...");
             
             bool mqttReconnected = false;
-            // Try to connect for a few times
             for (uint8_t i = 0; i < 5; i++)
             {
-                // Ensure WiFi is still connected before trying
                 if (WiFi.status() != WL_CONNECTED) {
                     Serial.println("❌ WiFi disconnected during MQTT reconnect attempt. Aborting.");
                     break; 
@@ -102,7 +95,7 @@ void keepWiFiMqttAlive(void *parameter)
                 {
                     mqttReconnected = true;
                     Serial.println("✅ MQTT Reconnected!");
-                    break; // Exit the for-loop
+                    break;
                 }
                 
                 Serial.print("❌ MQTT connection failed, rc=");
@@ -111,14 +104,12 @@ void keepWiFiMqttAlive(void *parameter)
                 vTaskDelay(pdMS_TO_TICKS(3000));
             }
 
-            // If still not reconnected, wait longer before the next big loop
             if (!mqttReconnected) {
                  vTaskDelay(pdMS_TO_TICKS(5000));
                  continue;
             }
         }
         
-        // 3. If both are connected, run the client loop
         if (client.connected())
         {
             if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(100)) == pdTRUE)
@@ -132,9 +123,11 @@ void keepWiFiMqttAlive(void *parameter)
     }
 }
 
-esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_data, const batteryDataPack &battery_data, const char *publish_topic)
+// --- CORRECTED FUNCTION ---
+esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_data, const batteryDataPack &battery_data, const timeDataPack &time_data, const char *publish_topic)
 {
-    const uint16_t PACKAGE_SIZE = 256;
+    // Increased size to accommodate the timestamp
+    const uint16_t PACKAGE_SIZE = 384; 
     const TickType_t publishTimeout = pdMS_TO_TICKS(500);
 
     if (WiFi.status() != WL_CONNECTED || !client.connected())
@@ -155,6 +148,13 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
     doc["bs"] = battery_data.battery_soc;
     doc["bt"] = battery_data.battery_temperature;
     doc["cw"] = battery_data.charge_wh;
+
+    // --- ADDED TIMESTAMP ---
+    char timestamp[25];
+    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 
+             time_data.year, time_data.month, time_data.day, 
+             time_data.hour, time_data.minute, time_data.second);
+    doc["timestamp"] = timestamp;
 
     char buffer[PACKAGE_SIZE];
     size_t n = serializeJson(doc, buffer);

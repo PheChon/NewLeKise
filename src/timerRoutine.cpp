@@ -2,6 +2,8 @@
 
 #include "timerRoutine.h"
 
+// ... (slot_1, slot_2, slot_3, slot_4 are unchanged) ...
+
 void slot_1_update_data()
 {
     static bool profile_updated_today = false;
@@ -11,6 +13,13 @@ void slot_1_update_data()
 
     // Get current time first for profile checks
     getCurrentTime(&time_data);
+
+    // --- Print Current Time ---
+    Serial.println("Current Time:");
+    Serial.printf("  %02d/%02d/%04d %02d:%02d:%02d\n", 
+                  time_data.day, time_data.month, time_data.year, 
+                  time_data.hour, time_data.minute, time_data.second);
+    Serial.println("------------------------------");
 
     // --- Get and Print Load Data ---
     if (getLoadInfo(&load_data) == ESP_OK && getLoadWh(&load_data) == ESP_OK)
@@ -181,6 +190,7 @@ void slot_3_forecasting_and_adjustment()
         }
     }
 }
+
 void slot_4_integration_check()
 {
     static bool soc_recharged = false;
@@ -201,11 +211,14 @@ void slot_4_integration_check()
         }
     }
 }
+
 void slot_5_publish_data()
 {
     Serial.println("========== Slot 5: Publishing Data ==========");
     const char *publish_topic = "test/data/up3";
-    if (publishData(load_data, solar_data, battery_data, publish_topic) == ESP_OK)
+    
+    // --- CORRECTED FUNCTION CALL ---
+    if (publishData(load_data, solar_data, battery_data, time_data, publish_topic) == ESP_OK)
     {
         Serial.println("✅ MQTT Publish Successful");
     } else {

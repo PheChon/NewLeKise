@@ -21,6 +21,12 @@ void setup()
 {
     setupMCU();
 
+    String mac_address = WiFi.macAddress();
+    mac_address.replace(":", "");
+    String client_id_str = "ESP32-SRNE-" + mac_address;
+    myMQTT.client_name = client_id_str.c_str();
+    Serial.printf("✅ MQTT Client ID set to: %s\n", myMQTT.client_name);
+
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -34,7 +40,7 @@ void setup()
     loaded_pgr = loadIntFromNVS("pgr", "pgr_bu", 0);
     Serial.printf("NVS Loaded: Time Updated Flag = %d, Programmed Flag = %d\n", loaded_tud, loaded_pgr);
 
-    Wire.begin(); // Initialize I2C for RTC
+    Wire.begin(); 
     bool rtc_available = (setupDs3231() == ESP_OK);
 
     setupExternalInterrupt(EXTERNAL_INTERRUPT_PIN, SERIAL_TX_PIN, SERIAL_RX_PIN);
@@ -45,25 +51,20 @@ void setup()
              getCurrentTime(&time_data);
              setChargingProfile(time_data, &charge_profile);
 
-            if (!loaded_pgr) {
-                Serial.println("Device not programmed. Starting configuration...");
-                if (configSrne() == ESP_OK) {
-                    Serial.println("✅ SRNE controller configured successfully.");
-                    saveIntToNVS("pgr", "pgr_bu", 1);
-                } else {
-                    Serial.println("❌ SRNE configuration failed. Halting.");
-                    while(true) vTaskDelay(1000);
-                }
+            Serial.println("Forcing SRNE configuration on every boot...");
+            if (configSrne() == ESP_OK) {
+                Serial.println("✅ SRNE controller configured successfully.");
             } else {
-                 Serial.println("✅ Device already programmed. Skipping initial config.");
+                Serial.println("❌ SRNE configuration failed. Halting.");
+                while(true) vTaskDelay(1000);
             }
+
         } else {
             Serial.println("❌ SRNE communication failed. Halting.");
             while(true) vTaskDelay(1000);
         }
     } else {
         Serial.println("⚠️ RTC not found or time not set. Waiting for command...");
-        // The resetListenerTask will handle the time set command.
     }
 
     clearAccumulateData();
@@ -91,7 +92,7 @@ void loop()
         }
         taskDone = true;
     }
-
+    
     if (TimeStartNewCurrent >= 2160 && !NewCurrent) {
         if (setMaxLoadCurrent(device_setting.max_load_current * 0.7) == ESP_OK) {
             Serial.println("💡 Load current reduced after extended use.");
@@ -106,11 +107,10 @@ void loop()
             TimeStartNewCurrent = 0;
         }
     }
-
+    
     if (load_data.load_current < 0.1 && TimeStartNewCurrent > 0) {
         TimeStartNewCurrent = 0;
     }
-
 
     vTaskDelay(pdMS_TO_TICKS(10));
 }
@@ -118,35 +118,45 @@ void loop()
 esp_err_t configSrne()
 {
     Serial.println("--- Starting SRNE Configuration ---");
-    vTaskDelay(pdMS_TO_TICKS(500));
+    uint8_t step = 1;
 
-    // CORRECTED: Pass the struct directly to match the 'const deviceSettingPack&' reference
-    if (setLithiumBattery(device_setting) != ESP_OK) return ESP_FAIL;
-    Serial.println("1. Set Lithium Battery OK");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    Serial.printf("%d. Set Max Charge Current\n", step);
+    if (setMaxChargeCurrent(charge_profile.max_charge_current, step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
 
-    if (setMaxChargeCurrent(charge_profile.max_charge_current) != ESP_OK) return ESP_FAIL;
-    Serial.println("2. Set Max Charge Current OK");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    Serial.printf("%d. Set Max Load Current\n", step);
+    if (setMaxLoadCurrent(device_setting.max_load_current, step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
 
-    if (setMaxLoadCurrent(device_setting.max_load_current) != ESP_OK) return ESP_FAIL;
-    Serial.println("3. Set Max Load Current OK");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    Serial.printf("%d. Set Load Percentage\n", step);
+    if (setLoadPercentage(device_setting.load_percentage, step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
+    
+    Serial.printf("%d. Set Manual Mode\n", step);
+    if (setManualMode(step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
 
-    // CORRECTED: Pass the specific member to match the 'uint8_t' argument
-    if (setLoadPercentage(device_setting.load_percentage) != ESP_OK) return ESP_FAIL;
-    Serial.println("4. Set Load Percentage OK");
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    if (setManualMode() != ESP_OK) return ESP_FAIL;
-    Serial.println("5. Set Manual Mode OK");
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
+    Serial.printf("%d. Set Load Schedules\n", step);
     esp_task_wdt_reset();
-    if (setLoadSchedules(load_schedule, SCHEDULE_SLOT_COUNT) != ESP_OK) return ESP_FAIL;
-    Serial.println("6. Set Load Schedules OK");
+    if (setLoadSchedules(load_schedule, SCHEDULE_SLOT_COUNT, step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(500)); // Add delay between major steps
 
-    vTaskDelay(pdMS_TO_TICKS(500));
+    Serial.printf("%d. Set Lithium Battery Parameters\n", step);
+    if (setLithiumBattery(device_setting, step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(500)); // Add delay between major steps
+    
     Serial.println("--- SRNE Configuration Finished ---");
     return ESP_OK;
 }
