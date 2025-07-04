@@ -6,6 +6,7 @@
 
 void slot_1_update_data()
 {
+    esp_task_wdt_reset();
     static bool profile_updated_today = false;
     static uint8_t last_day_checked = 0;
 
@@ -33,6 +34,7 @@ void slot_1_update_data()
     // --- Get and Print Solar Data ---
     if (getSolarInfo(&solar_data) == ESP_OK)
     {
+        Serial.println("------------------------------------------------------------");
         Serial.println("Solar Data:");
         Serial.printf("  Voltage                : %.2f V\n", solar_data.solar_voltage);
         Serial.printf("  Current                : %.2f A\n", solar_data.solar_current);
@@ -45,6 +47,7 @@ void slot_1_update_data()
     // และเรียก updateEstimatedSOC เพื่อคำนวณ SOC จาก Voltage
     if (getBatteryInfo(&battery_data) == ESP_OK && getChargeWh(&battery_data) == ESP_OK && updateEstimatedSOC(&battery_data) == ESP_OK)
     {
+        Serial.println("------------------------------------------------------------");
         Serial.println("Battery Data:");
         Serial.printf("  Voltage                : %.2f V\n", battery_data.battery_voltage);
         Serial.printf("  Current                : %.2f A\n", battery_data.battery_current);
@@ -76,6 +79,7 @@ void slot_1_update_data()
 
 void slot_2_safety_checks()
 {
+    esp_task_wdt_reset();
     static bool soc_max_reached = false;
     static bool soc_min_reached = false; // Currently unused logic
     static bool check_11_done = false;
@@ -130,6 +134,7 @@ void slot_2_safety_checks()
 
 void slot_3_forecasting_and_adjustment()
 {
+    esp_task_wdt_reset();
     static bool charge_wh_captured = false;
     static bool load_wh_captured = false;
     static bool first_forecast_run = true;
@@ -192,6 +197,7 @@ void slot_3_forecasting_and_adjustment()
 
 void slot_4_integration_check()
 {
+    esp_task_wdt_reset();
     static bool soc_recharged = false;
     Serial.println("========== Slot 4: System Integration Check ==================");
 
@@ -213,6 +219,7 @@ void slot_4_integration_check()
 
 void slot_5_publish_data()
 {
+    esp_task_wdt_reset();
     Serial.println("========== Slot 5: Publishing Data ===========================");
     const char *publish_topic = "test/data/up3";
     
