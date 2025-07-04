@@ -27,5 +27,6 @@ esp_err_t getSolarInfo(solarDataPack *solar_data);
 esp_err_t getBatteryInfo(batteryDataPack *battery_data);
 esp_err_t getLoadWh(loadDataPack *load_data);
 esp_err_t getChargeWh(batteryDataPack *battery_data);
+esp_err_t updateEstimatedSOC(batteryDataPack *battery_data);
 
 #endif // HAL_SRNE_H

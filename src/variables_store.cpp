@@ -46,7 +46,7 @@ chargingProfilePack charge_profile = {
 };
 
 deviceSettingPack device_setting = {
-    .max_load_current = 0.75,
+    .max_load_current = 1.15,
     .load_percentage = 100,
     .voltage_light_control = 5.0,
     .voltage_system = 12,
@@ -60,7 +60,7 @@ deviceSettingPack device_setting = {
 
 loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
     {1, 10800, 100, 100}, // 3 h
-    {2, 32400, 70, 70}, // 7 h
+    {2, 32400, 56, 56}, // 7 h
     {3, 7200, 100, 100},  // 2 h
     {4, 0, 0, 0},
     {5, 0, 0, 0},

@@ -11,7 +11,6 @@ void slot_1_update_data()
 
     Serial.println("========== Slot 1: Data Acquisition & Profile Setup ==========");
 
-    // Get current time first for profile checks
     getCurrentTime(&time_data);
 
     // --- Print Current Time ---
@@ -19,41 +18,41 @@ void slot_1_update_data()
     Serial.printf("  %02d/%02d/%04d %02d:%02d:%02d\n", 
                   time_data.day, time_data.month, time_data.year, 
                   time_data.hour, time_data.minute, time_data.second);
-    Serial.println("------------------------------");
+    Serial.println("------------------------------------------------------------");
 
     // --- Get and Print Load Data ---
     if (getLoadInfo(&load_data) == ESP_OK && getLoadWh(&load_data) == ESP_OK)
     {
         Serial.println("Load Data:");
-        Serial.printf("  Voltage     : %.2f V\n", load_data.load_voltage);
-        Serial.printf("  Current     : %.2f A\n", load_data.load_current);
-        Serial.printf("  Power       : %d W\n", load_data.load_power);
-        Serial.printf("  Energy (Wh) : %lu Wh\n", load_data.load_wh);
-        Serial.printf("  Last Wh     : %lu Wh\n", load_data.last_load_wh);
-        Serial.println("------------------------------");
+        Serial.printf("  Voltage                : %.2f V\n", load_data.load_voltage);
+        Serial.printf("  Current                : %.2f A\n", load_data.load_current);
+        Serial.printf("  Power                  : %d W\n", load_data.load_power);
+        Serial.println("------------------------------------------------------------");
     }
 
     // --- Get and Print Solar Data ---
     if (getSolarInfo(&solar_data) == ESP_OK)
     {
         Serial.println("Solar Data:");
-        Serial.printf("  Voltage : %.2f V\n", solar_data.solar_voltage);
-        Serial.printf("  Current : %.2f A\n", solar_data.solar_current);
-        Serial.printf("  Power   : %d W\n", solar_data.solar_power);
-        Serial.println("------------------------------");
+        Serial.printf("  Voltage                : %.2f V\n", solar_data.solar_voltage);
+        Serial.printf("  Current                : %.2f A\n", solar_data.solar_current);
+        Serial.printf("  Power                  : %d W\n", solar_data.solar_power);
+        Serial.println("------------------------------------------------------------");
     }
 
     // --- Get and Print Battery Data ---
-    if (getBatteryInfo(&battery_data) == ESP_OK && getChargeWh(&battery_data) == ESP_OK)
+    // เรียก getBatteryInfo เพื่อเอาค่า SOC จาก Controller
+    // และเรียก updateEstimatedSOC เพื่อคำนวณ SOC จาก Voltage
+    if (getBatteryInfo(&battery_data) == ESP_OK && getChargeWh(&battery_data) == ESP_OK && updateEstimatedSOC(&battery_data) == ESP_OK)
     {
         Serial.println("Battery Data:");
-        Serial.printf("  Voltage     : %.2f V\n", battery_data.battery_voltage);
-        Serial.printf("  Current     : %.2f A\n", battery_data.battery_current);
-        Serial.printf("  SOC         : %d %%\n", battery_data.battery_soc);
-        Serial.printf("  Temp        : %d °C\n", battery_data.battery_temperature);
-        Serial.printf("  Charge Wh   : %lu Wh\n", battery_data.charge_wh);
-        Serial.printf("  Last Wh     : %lu Wh\n", battery_data.last_charge_wh);
-        Serial.println("------------------------------");
+        Serial.printf("  Voltage                : %.2f V\n", battery_data.battery_voltage);
+        Serial.printf("  Current                : %.2f A\n", battery_data.battery_current);
+        Serial.printf("  SOC (From Controller)  : %d %%\n", battery_data.battery_soc);
+        Serial.printf("  SOC (Estimated)        : %.1f %%\n", battery_data.battery_soc_estimated);
+        Serial.printf("  Temp                   : %d °C\n", battery_data.battery_temperature);
+        Serial.printf("  Charge Wh              : %lu Wh\n", battery_data.charge_wh);
+        Serial.println("-----------------------------------------------------------");
     }
 
     // --- Handle Profile Update Logic ---
@@ -82,7 +81,7 @@ void slot_2_safety_checks()
     static bool check_11_done = false;
     static bool check_12_done = false;
 
-    Serial.println("========== Slot 2: Real-time Safety & SOC Checks ==========");
+    Serial.println("========== Slot 2: Real-time Safety & SOC Checks =============");
 
     bool is_day_time = (time_data.hour >= 6 && time_data.hour <= 17);
     float last_max_charge_current = charge_profile.max_charge_current;
@@ -194,7 +193,7 @@ void slot_3_forecasting_and_adjustment()
 void slot_4_integration_check()
 {
     static bool soc_recharged = false;
-    Serial.println("========== Slot 4: System Integration Check ==========");
+    Serial.println("========== Slot 4: System Integration Check ==================");
 
     if (!integrated) {
         bool is_day_time = (time_data.hour >= 6 && time_data.hour <= 17);
@@ -214,7 +213,7 @@ void slot_4_integration_check()
 
 void slot_5_publish_data()
 {
-    Serial.println("========== Slot 5: Publishing Data ==========");
+    Serial.println("========== Slot 5: Publishing Data ==========================");
     const char *publish_topic = "test/data/up3";
     
     // --- CORRECTED FUNCTION CALL ---

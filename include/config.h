@@ -37,6 +37,7 @@ struct batteryDataPack
     int battery_temperature;
     uint32_t charge_wh;
     uint32_t last_charge_wh;
+    float battery_soc_estimated; 
 };
 
 struct solarDataPack

@@ -245,6 +245,73 @@ esp_err_t getBatteryInfo(batteryDataPack *battery_data) {
     vTaskDelay(pdMS_TO_TICKS(COMMAND_INTERVAL_MS));
     return ESP_OK;
 }
+
+// --- สร้าง Struct สำหรับเก็บคู่ข้อมูล Voltage และ SOC ---
+struct VoltageSOCTable {
+    float voltage;
+    float soc;
+};
+
+// --- สร้างตารางค้นหา (Lookup Table) ---
+const VoltageSOCTable soc_lookup_table[] = {
+    {10.0f, 0.0f},   {10.1f, 1.0f},   {10.2f, 2.0f},   {10.3f, 3.0f},
+    {10.4f, 4.0f},   {10.5f, 5.0f},   {10.6f, 6.0f},   {10.7f, 7.0f},
+    {10.8f, 8.0f},   {10.9f, 9.0f},   {11.0f, 9.1f},   {11.1f, 9.2f},
+    {11.2f, 9.3f},   {11.3f, 9.4f},   {11.4f, 9.5f},   {11.5f, 9.6f},
+    {11.6f, 9.7f},   {11.7f, 9.8f},   {11.8f, 9.9f},   {12.0f, 10.0f},
+    {12.1f, 11.2f},  {12.2f, 12.5f},  {12.3f, 13.8f},  {12.4f, 15.0f},
+    {12.5f, 16.2f},  {12.6f, 17.5f},  {12.7f, 18.8f},  {12.8f, 20.0f},
+    {12.9f, 30.0f},  {13.0f, 50.0f},  {13.1f, 60.0f},  {13.2f, 70.0f},
+    {13.3f, 80.0f},  {13.4f, 90.0f},  {13.5f, 99.0f},  {13.6f, 100.0f}
+};
+const int soc_table_size = sizeof(soc_lookup_table) / sizeof(soc_lookup_table[0]);
+
+// --- ฟังก์ชันที่แก้ไขใหม่โดยใช้ Lookup Table ---
+esp_err_t updateEstimatedSOC(batteryDataPack *battery_data) {
+    uint16_t buffer;
+    esp_task_wdt_reset();
+    // อ่านค่า Battery Voltage จาก Address 0x0101
+    if (readDataWithRetry(0x0101, &buffer, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) {
+        return ESP_FAIL;
+        esp_task_wdt_reset();
+    }
+
+    float voltage = buffer * 0.1f;
+    float estimated_soc = 0.0f;
+
+    // --- Logic การค้นหาจากตาราง ---
+    if (voltage <= soc_lookup_table[0].voltage) {
+        // ถ้าค่าน้อยกว่าหรือเท่ากับค่าแรกสุดในตาราง
+        estimated_soc = soc_lookup_table[0].soc;
+    } else if (voltage >= soc_lookup_table[soc_table_size - 1].voltage) {
+        // ถ้าค่ามากกว่าหรือเท่ากับค่าสุดท้ายในตาราง
+        estimated_soc = soc_lookup_table[soc_table_size - 1].soc;
+    } else {
+        // วนลูปหาช่วงที่ Voltage อยู่
+        for (int i = 0; i < soc_table_size - 1; i++) {
+            if (voltage >= soc_lookup_table[i].voltage && voltage < soc_lookup_table[i+1].voltage) {
+                // --- ทางเลือกที่ 1: ใช้ค่า SOC ของขั้นที่ต่ำกว่า (เหมือน if-else) ---
+                // estimated_soc = soc_lookup_table[i].soc;
+                
+                // --- ทางเลือกที่ 2: คำนวณแบบ Linear Interpolation (ให้ค่าต่อเนื่องกว่า) ---
+                float v1 = soc_lookup_table[i].voltage;
+                float s1 = soc_lookup_table[i].soc;
+                float v2 = soc_lookup_table[i+1].voltage;
+                float s2 = soc_lookup_table[i+1].soc;
+                estimated_soc = s1 + ((voltage - v1) * (s2 - s1)) / (v2 - v1);
+                
+                break; // ออกจาก Loop เมื่อเจอช่วงที่ถูกต้อง
+            }
+        }
+    }
+
+    // เก็บค่าที่คำนวณได้ลงใน struct
+    battery_data->battery_soc_estimated = estimated_soc;
+    battery_data->battery_voltage = voltage;
+
+    return ESP_OK;
+}
+
 esp_err_t getLoadWh(loadDataPack *load_data) {
     uint32_t pBuffer = 0;
     if (readDataWithRetry32(0x011E, &pBuffer, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
