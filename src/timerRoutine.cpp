@@ -213,7 +213,7 @@ void slot_4_integration_check()
 
 void slot_5_publish_data()
 {
-    Serial.println("========== Slot 5: Publishing Data ==========================");
+    Serial.println("========== Slot 5: Publishing Data ===========================");
     const char *publish_topic = "test/data/up3";
     
     // --- CORRECTED FUNCTION CALL ---
