@@ -46,98 +46,118 @@ esp_err_t setupMQTT(MqttConfig mqtt_parameter)
     
     if (WiFi.status() == WL_CONNECTED)
     {
-        Serial.print("🌐 Connecting to MQTT...");
         if (client.connect(mqtt_parameter.client_name, mqtt_parameter.username, mqtt_parameter.password))
         {
-            Serial.println("\n✅ MQTT Connected!");
+            Serial.println("[MQTT] Connected!");
             return ESP_OK;
         }
         else
         {
-            Serial.print("\n❌ MQTT Connection Failed during setup, rc=");
-            Serial.println(client.state());
             return ESP_FAIL;
         }
     }
-    
-    Serial.println("WiFi not available during setup, MQTT connection will be attempted by keep-alive task.");
+
     return ESP_FAIL;
 }
 
-// --- CORRECTED FUNCTION ---
-// Implemented a self-healing mechanism via esp_restart()
 void keepWiFiMqttAlive(void *parameter)
 {
+    static const uint16_t delay_time_ms = 250;
     client.setKeepAlive(60);
-    const int max_mqtt_retries = 5;
 
     for (;;)
     {
         esp_task_wdt_reset();
 
-        if (WiFi.status() != WL_CONNECTED)
+        if (WiFi.status() != WL_CONNECTED || WiFi.localIP() == IPAddress(0, 0, 0, 0))
         {
-            Serial.println("⚠️ WiFi Disconnected! Waiting for system to reconnect...");
-            vTaskDelay(pdMS_TO_TICKS(2000));
-            continue;
-        }
+            Serial.println("⚠️ WiFi Disconnected! Attempting to reconnect...");
 
-        if (!client.connected())
-        {
-            Serial.println("⚠️ MQTT Disconnected. Attempting to reconnect...");
+            WiFi.disconnect();
+            vTaskDelay(pdMS_TO_TICKS(100));
             
-            bool mqttReconnected = false;
-            for (uint8_t i = 0; i < max_mqtt_retries; i++)
+            WiFi.begin(myWiFi.ssid, myWiFi.password);
+
+            bool wifiReconnected = false;
+            for (uint8_t i = 0; i < 10; i++)
             {
-                if (WiFi.status() != WL_CONNECTED) {
-                    Serial.println("❌ WiFi disconnected during MQTT reconnect. Aborting this cycle.");
-                    break; 
+                vTaskDelay(pdMS_TO_TICKS(delay_time_ms));
+                esp_task_wdt_reset();
+
+                if (WiFi.status() == WL_CONNECTED)
+                {
+                    wifiReconnected = true;
+                    Serial.println("✅ WiFi Reconnected!");
+                    break;
+                }
+            }
+            if (!wifiReconnected)
+            {
+                Serial.println("❌ WiFi reconnection failed, retrying later...");
+                vTaskDelay(pdMS_TO_TICKS(200));
+                continue;
+            }
+        }
+        else if (WiFi.status() == WL_CONNECTED && !client.connected())
+        {
+            Serial.println("⚠️ MQTT Disconnected while WiFi is Connected! Attempting to reconnect...");
+            client.disconnect();
+
+            bool mqttReconnected = false;
+            for (uint8_t i = 0; i < 10; i++)
+            {
+                if (WiFi.status() != WL_CONNECTED || WiFi.localIP() == IPAddress(0, 0, 0, 0))
+                {
+                    Serial.println("❌ WiFi disconnected during MQTT reconnect. Aborting MQTT reconnect attempt.");
+                    break;
+                }
+
+                Serial.printf("🔄 Retrying MQTT Connection (Attempt %d/10)...\n", i+1);
+                
+                if (!espClient.connect(myMQTT.server, myMQTT.port)) {
+                    Serial.println("   -> TCP connection failed!");
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    continue;
                 }
                 
-                Serial.printf("   - MQTT Reconnect Attempt %d/%d...\n", i + 1, max_mqtt_retries);
-
-                // Attempt to connect
                 if (client.connect(myMQTT.client_name, myMQTT.username, myMQTT.password))
                 {
                     mqttReconnected = true;
                     Serial.println("✅ MQTT Reconnected!");
-                    break; // Exit the for-loop
+                    break;
                 }
                 
-                Serial.print("   -> Connection failed, rc=");
-                Serial.print(client.state());
-                Serial.println(". Retrying in 3 seconds...");
-                vTaskDelay(pdMS_TO_TICKS(3000));
+                Serial.print("   -> MQTT connection failed, rc=");
+                Serial.println(client.state());
+
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                esp_task_wdt_reset();
             }
 
-            // *** THE CRUCIAL FIX ***
-            // If MQTT still fails after many retries, assume an unrecoverable state and restart.
-            if (!mqttReconnected) {
-                Serial.println("❌ Failed to reconnect to MQTT after multiple attempts. Network stack may be unstable.");
-                Serial.println("🔄 Restarting device to recover...");
-                vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow log message to be sent
-                esp_restart();
+            if (!mqttReconnected)
+            {
+                Serial.println("❌ MQTT reconnection failed, retrying later...");
+                vTaskDelay(pdMS_TO_TICKS(200));
+                continue;
             }
         }
-        else 
+        else if (WiFi.status() == WL_CONNECTED && client.connected())
         {
             if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(100)) == pdTRUE)
             {
-                if (!client.loop()) {
-                    Serial.println("⚠️ client.loop() returned false, connection likely lost.");
-                }
+                client.loop();
                 xSemaphoreGive(mqttMutex);
             }
+            esp_task_wdt_reset();
         }
 
-        vTaskDelay(pdMS_TO_TICKS(500)); 
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
-
 esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_data, const batteryDataPack &battery_data, const timeDataPack &time_data, const char *publish_topic)
 {
-    const uint16_t PACKAGE_SIZE = 384; 
+    const uint16_t PACKAGE_SIZE = 512;
     const TickType_t publishTimeout = pdMS_TO_TICKS(500);
 
     if (WiFi.status() != WL_CONNECTED || !client.connected())
@@ -145,7 +165,9 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
         return ESP_FAIL;
     }
 
+    // --- แก้ไขจาก StaticJsonDocument เป็น JsonDocument ---
     JsonDocument doc;
+    
     doc["lv"] = load_data.load_voltage;
     doc["lc"] = load_data.load_current;
     doc["lp"] = load_data.load_power;
@@ -158,6 +180,7 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
     doc["bs"] = battery_data.battery_soc;
     doc["bt"] = battery_data.battery_temperature;
     doc["cw"] = battery_data.charge_wh;
+    doc["bse"] = round(battery_data.battery_soc_estimated * 10) / 10.0;
 
     char timestamp[25];
     snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 
