@@ -53,6 +53,8 @@ void setup()
 
             Serial.println("Forcing SRNE configuration on every boot...");
             if (configSrne() == ESP_OK) {
+                saveIntToNVS("pgr", "pgr_bu", 1);
+                loaded_pgr = loadIntFromNVS("pgr", "pgr_bu", 1);
                 Serial.println("✅ SRNE controller configured successfully.");
             } else {
                 Serial.println("❌ SRNE configuration failed. Halting.");
