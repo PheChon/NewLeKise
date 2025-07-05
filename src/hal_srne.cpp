@@ -109,7 +109,7 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
         uint16_t duration_address = base_address;
         new_value = schedules[i].duration_s;
         if (readDataWithRetry(duration_address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-            if (step_num != 0) Serial.printf("  [DEBUG] Comparing Duration: Current value = %d, New value = %d\n", current_value, new_value);
+            if (step_num != 0) Serial.printf("      Comparing Duration: Current value = %d, New value = %d\n", current_value, new_value);
             if(current_value == new_value) {
                 if (step_num != 0) Serial.printf("  %d.%d.1 Duration for schedule %d is already %us. Skipping.\n", step_num, i + 1, schedule_no, new_value);
             } else {
@@ -118,7 +118,7 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
                 vTaskDelay(pdMS_TO_TICKS(1000));
             }
         } else {
-            if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Duration. Writing new value %d\n", new_value);
+            if (step_num != 0) Serial.printf("      Failed to read Duration. Writing new value %d\n", new_value);
             if (writeDataWithRetry(duration_address, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
@@ -127,7 +127,7 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
         uint16_t attended_address = base_address + 1;
         new_value = schedules[i].attended_power;
         if (readDataWithRetry(attended_address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-            if (step_num != 0) Serial.printf("  [DEBUG] Comparing Attended Power: Current value = %d, New value = %d\n", current_value, new_value);
+            if (step_num != 0) Serial.printf("      Comparing Attended Power: Current value = %d, New value = %d\n", current_value, new_value);
             if (current_value == new_value) {
                 if (step_num != 0) Serial.printf("  %d.%d.2 Attended power for schedule %d is already %d%%. Skipping.\n", step_num, i + 1, schedule_no, new_value);
             } else {
@@ -136,7 +136,7 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
                 vTaskDelay(pdMS_TO_TICKS(1000));
             }
         } else {
-            if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Attended Power. Writing new value %d\n", new_value);
+            if (step_num != 0) Serial.printf("      Failed to read Attended Power. Writing new value %d\n", new_value);
             if (writeDataWithRetry(attended_address, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
@@ -145,7 +145,7 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
         uint16_t unattended_address = base_address + 2;
         new_value = schedules[i].unattended_power;
         if (readDataWithRetry(unattended_address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-            if (step_num != 0) Serial.printf("  [DEBUG] Comparing Unattended Power: Current value = %d, New value = %d\n", current_value, new_value);
+            if (step_num != 0) Serial.printf("      Comparing Unattended Power: Current value = %d, New value = %d\n", current_value, new_value);
             if (current_value == new_value) {
                 if (step_num != 0) Serial.printf("  %d.%d.3 Unattended power for schedule %d is already %d%%. Skipping.\n", step_num, i + 1, schedule_no, new_value);
             } else {
@@ -154,7 +154,7 @@ esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t sch
                 vTaskDelay(pdMS_TO_TICKS(1000));
             }
         } else {
-            if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Unattended power. Writing new value %d\n", new_value);
+            if (step_num != 0) Serial.printf("      Failed to read Unattended power. Writing new value %d\n", new_value);
             if (writeDataWithRetry(unattended_address, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
@@ -172,7 +172,7 @@ esp_err_t setLithiumBattery(const deviceSettingPack &setting, uint8_t step_num) 
     #define CHECK_AND_WRITE(address, value_to_write, log_name, format_spec, original_value) \
     do { \
         if (readDataWithRetry(address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) { \
-            if (step_num != 0) Serial.printf("  [DEBUG] Comparing %s: Current value = %d, New value = %d\n", log_name, current_value, (value_to_write)); \
+            if (step_num != 0) Serial.printf("      Comparing %s: Current value = %d, New value = %d\n", log_name, current_value, (value_to_write)); \
             if (current_value == (value_to_write)) { \
                 if (step_num != 0) Serial.printf("  %d.%d %s is already " format_spec ". Skipping write.\n", step_num, sub_step++, log_name, (original_value)); \
             } else { \
@@ -182,7 +182,7 @@ esp_err_t setLithiumBattery(const deviceSettingPack &setting, uint8_t step_num) 
             } \
         } else { \
             if (step_num != 0) { \
-                Serial.printf("  [DEBUG] Failed to read %s. Writing new value " format_spec "\n", log_name, (original_value)); \
+                Serial.printf("      Failed to read %s. Writing new value " format_spec "\n", log_name, (original_value)); \
                 Serial.printf("  %d.%d Writing %s: " format_spec " to address 0x%04X\n", step_num, sub_step++, log_name, (original_value), address); \
             } \
             if (writeDataWithRetry(address, (value_to_write), MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL; \
@@ -208,13 +208,13 @@ esp_err_t setLoadPercentage(uint8_t percentage, uint8_t step_num) {
     uint16_t current_value;
 
     if (readDataWithRetry(address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-        if (step_num != 0) Serial.printf("  [DEBUG] Comparing Load Percentage: Current value = %d, New value = %d\n", current_value, new_value);
+        if (step_num != 0) Serial.printf("      Comparing Load Percentage: Current value = %d, New value = %d\n", current_value, new_value);
         if (current_value == new_value) {
             if (step_num != 0) Serial.printf("  %d.1 Load Percentage is already set to %d%%. Skipping write.\n", step_num, percentage);
             return ESP_OK;
         }
     } else {
-        if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Load Percentage. Proceeding to write.\n");
+        if (step_num != 0) Serial.printf("      Failed to read Load Percentage. Proceeding to write.\n");
     }
 
     if (step_num != 0) Serial.printf("  %d.1 Writing Load Percentage: %d%% to address 0xDF0A\n", step_num, percentage);
@@ -228,13 +228,13 @@ esp_err_t setMaxChargeCurrent(float max_current, uint8_t step_num) {
     uint16_t current_value;
 
     if (readDataWithRetry(address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-        if (step_num != 0) Serial.printf("  [DEBUG] Comparing MaxChargeCurrent: Current value = %d, New value = %d\n", current_value, new_value);
+        if (step_num != 0) Serial.printf("      Comparing MaxChargeCurrent: Current value = %d, New value = %d\n", current_value, new_value);
         if (current_value == new_value) {
             if (step_num != 0) Serial.printf("  %d.1 Max Charge Current is already set to %.2fA. Skipping write.\n", step_num, set_current);
             return ESP_OK;
         }
     } else {
-         if (step_num != 0) Serial.printf("  [DEBUG] Failed to read MaxChargeCurrent. Proceeding to write.\n");
+         if (step_num != 0) Serial.printf("      Failed to read MaxChargeCurrent. Proceeding to write.\n");
     }
     
     if (step_num != 0) Serial.printf("  %d.1 Writing Max Charge Current: %.2fA to address 0xE001\n", step_num, set_current);
@@ -247,13 +247,13 @@ esp_err_t setMaxLoadCurrent(float max_current, uint8_t step_num) {
     uint16_t current_value;
 
     if (readDataWithRetry(address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-        if (step_num != 0) Serial.printf("  [DEBUG] Comparing MaxLoadCurrent: Current value = %d, New value = %d\n", current_value, new_value);
+        if (step_num != 0) Serial.printf("      Comparing MaxLoadCurrent: Current value = %d, New value = %d\n", current_value, new_value);
         if (current_value == new_value) {
             if (step_num != 0) Serial.printf("  %d.1 Max Load Current is already set to %.2fA. Skipping write.\n", step_num, max_current);
             return ESP_OK;
         }
     } else {
-        if (step_num != 0) Serial.printf("  [DEBUG] Failed to read MaxLoadCurrent. Proceeding to write.\n");
+        if (step_num != 0) Serial.printf("      Failed to read MaxLoadCurrent. Proceeding to write.\n");
     }
 
     if (step_num != 0) Serial.printf("  %d.1 Writing Max Load Current: %.2fA to address 0xE08D\n", step_num, max_current);
@@ -268,7 +268,7 @@ esp_err_t setManualMode(uint8_t step_num) {
     // 1. Set Load Operation Mode to Manual (0x0200)
     new_value = 0x0200;
     if (readDataWithRetry(0xDF09, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-        if (step_num != 0) Serial.printf("  [DEBUG] Comparing Load Op Mode: Current value = %d, New value = %d\n", current_value, new_value);
+        if (step_num != 0) Serial.printf("      Comparing Load Op Mode: Current value = %d, New value = %d\n", current_value, new_value);
         if (current_value == new_value) {
             if (step_num != 0) Serial.printf("  %d.%d Load Operation Mode is already Manual. Skipping.\n", step_num, sub_step++);
         } else {
@@ -276,14 +276,14 @@ esp_err_t setManualMode(uint8_t step_num) {
              if (writeDataWithRetry(0xDF09, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
         }
     } else {
-        if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Load Op Mode. Writing new value %d\n", new_value);
+        if (step_num != 0) Serial.printf("      Failed to read Load Op Mode. Writing new value %d\n", new_value);
         if (writeDataWithRetry(0xDF09, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
     }
     
     // 2. Set Manual Power to 0%
     new_value = 0x0000;
     if (readDataWithRetry(0xDF0A, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-        if (step_num != 0) Serial.printf("  [DEBUG] Comparing Manual Power: Current value = %d, New value = %d\n", current_value, new_value);
+        if (step_num != 0) Serial.printf("      Comparing Manual Power: Current value = %d, New value = %d\n", current_value, new_value);
         if (current_value == new_value) {
             if (step_num != 0) Serial.printf("  %d.%d Manual Power is already 0%%. Skipping.\n", step_num, sub_step++);
         } else {
@@ -291,14 +291,14 @@ esp_err_t setManualMode(uint8_t step_num) {
             if (writeDataWithRetry(0xDF0A, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
         }
     } else {
-        if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Manual Power. Writing new value %d\n", new_value);
+        if (step_num != 0) Serial.printf("      Failed to read Manual Power. Writing new value %d\n", new_value);
         if (writeDataWithRetry(0xDF0A, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
     }
 
     // 3. Set Manual Duration
     new_value = 0xD2F0;
     if (readDataWithRetry(0xDF0B, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
-        if (step_num != 0) Serial.printf("  [DEBUG] Comparing Manual Duration: Current value = %d, New value = %d\n", current_value, new_value);
+        if (step_num != 0) Serial.printf("      Comparing Manual Duration: Current value = %d, New value = %d\n", current_value, new_value);
         if (current_value == new_value) {
             if (step_num != 0) Serial.printf("  %d.%d Manual Duration is already 0xD2F0. Skipping.\n", step_num, sub_step++);
         } else {
@@ -306,7 +306,7 @@ esp_err_t setManualMode(uint8_t step_num) {
             if (writeDataWithRetry(0xDF0B, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
         }
     } else {
-        if (step_num != 0) Serial.printf("  [DEBUG] Failed to read Manual Duration. Writing new value %d\n", new_value);
+        if (step_num != 0) Serial.printf("      Failed to read Manual Duration. Writing new value %d\n", new_value);
         if (writeDataWithRetry(0xDF0B, new_value, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
     }
     
