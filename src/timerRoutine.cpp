@@ -91,7 +91,7 @@ void slot_2_safety_checks()
     float last_max_charge_current = charge_profile.max_charge_current;
 
     // Safety: If SOC is full during the day, stop charging
-    if (is_day_time && battery_data.battery_soc >= charge_profile.max_soc && !soc_max_reached && integrated)
+    if (is_day_time && battery_data.battery_voltage >= 14 && !soc_max_reached && integrated)
     {
         if (setMaxChargeCurrent(0.0) == ESP_OK) {
             soc_max_reached = true;
@@ -221,7 +221,7 @@ void slot_5_publish_data()
 {
     esp_task_wdt_reset();
     Serial.println("========== Slot 5: Publishing Data ===========================");
-    const char *publish_topic = "test/data/up3";
+    const char *publish_topic = "test/data/up2";
     
     // --- CORRECTED FUNCTION CALL ---
     if (publishData(load_data, solar_data, battery_data, time_data, publish_topic) == ESP_OK)

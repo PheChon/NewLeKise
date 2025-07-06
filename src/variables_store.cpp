@@ -71,8 +71,8 @@ loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
 };
 // ... (rest of the variables are unchanged) ...
 wifiConfig myWiFi = {
-    .ssid = "1729",   //lekise_solar
-    .password = "88888888",//idealab2023
+    .ssid = "lekise_solar",   //lekise_solar
+    .password = "idealab2023",//idealab2023
 };
 
 MqttConfig myMQTT = {
@@ -80,7 +80,7 @@ MqttConfig myMQTT = {
     .port = 1883,
     .username = "guest",
     .password = "LeKise&KMUTT",
-    .client_name = "test3"
+    .client_name = "test2"
 };
 int loaded_tud = 0;
 int loaded_pgr = 0;
