@@ -13,6 +13,7 @@ esp_err_t setManualLoadPowerWithDuration(uint8_t power, uint16_t duration_s);
 
 // Configuration and Setup Functions
 esp_err_t setLithiumBattery(const deviceSettingPack &setting, uint8_t step_num = 0);
+esp_err_t setLightControlVoltage(float voltage, uint8_t step_num = 0); // <--- เพิ่มการประกาศฟังก์ชันใหม่ที่นี่
 esp_err_t setLoadPercentage(uint8_t percentage, uint8_t step_num = 0);
 esp_err_t setLoadSchedules(const loadScheduleSettingPack *schedules, uint8_t schedule_amount, uint8_t step_num = 0);
 esp_err_t setMaxChargeCurrent(float max_current, uint8_t step_num = 0);

@@ -221,7 +221,7 @@ void slot_5_publish_data()
 {
     esp_task_wdt_reset();
     Serial.println("========== Slot 5: Publishing Data ===========================");
-    const char *publish_topic = "test/data/up2";
+    const char *publish_topic = "test/data/up3";
     
     // --- CORRECTED FUNCTION CALL ---
     if (publishData(load_data, solar_data, battery_data, time_data, publish_topic) == ESP_OK)

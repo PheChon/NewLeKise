@@ -145,6 +145,14 @@ esp_err_t configSrne()
         Serial.println("   -> FAILED"); return ESP_FAIL;
     }
     vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
+
+    // +++ START: เพิ่มการเรียกใช้ฟังก์ชันใหม่ที่นี่ +++
+    Serial.printf("%d. Set Light Control Voltage\n", step);
+    if (setLightControlVoltage(device_setting.voltage_light_control, step++) != ESP_OK) {
+        Serial.println("   -> FAILED"); return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
+    // +++ END: เพิ่มการเรียกใช้ฟังก์ชันใหม่ที่นี่ +++
     
     Serial.printf("%d. Set Manual Mode\n", step);
     if (setManualMode(step++) != ESP_OK) {

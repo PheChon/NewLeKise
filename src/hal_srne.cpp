@@ -47,6 +47,27 @@ esp_err_t writeDataWithRetry(uint16_t start_address, uint16_t value, uint8_t max
     return ESP_FAIL;
 }
 
+// +++ START: เพิ่มฟังก์ชันใหม่ที่นี่ +++
+esp_err_t setLightControlVoltage(float voltage, uint8_t step_num) {
+    const uint16_t address = 0xE01F; // Address for Light-control voltage 
+    uint16_t new_value = (uint16_t)round(voltage); // Multiplier is 1 [cite: 350]
+    uint16_t current_value;
+
+    if (readDataWithRetry(address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
+        if (step_num != 0) Serial.printf("  [CHECK] Comparing Light Control Voltage: Current value = %d, New value = %d\n", current_value, new_value);
+        if (current_value == new_value) {
+            if (step_num != 0) Serial.printf("  %d.1 Light Control Voltage is already set to %.1fV. Skipping write.\n", step_num, voltage);
+            return ESP_OK;
+        }
+    } else {
+        if (step_num != 0) Serial.printf("  [CHECK] Failed to read Light Control Voltage. Proceeding to write.\n");
+    }
+
+    if (step_num != 0) Serial.printf("  %d.1 Writing Light Control Voltage: %.1fV to address 0xE01F\n", step_num, voltage);
+    return writeDataWithRetry(address, new_value, MAX_RETRY, RETRY_INTERVAL_MS);
+}
+// +++ END: เพิ่มฟังก์ชันใหม่ที่นี่ +++
+
 esp_err_t setManualLoadPowerWithDuration(uint8_t power, uint16_t duration_s) {
     const uint8_t deviceAddress = 0x01;
     const uint16_t startAddress = 0xDF0A;

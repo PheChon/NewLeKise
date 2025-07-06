@@ -48,14 +48,14 @@ chargingProfilePack charge_profile = {
 deviceSettingPack device_setting = {
     .max_load_current = 1.15,
     .load_percentage = 100,
-    .voltage_light_control = 5.0,
+    .voltage_light_control = 10.0,
     .voltage_system = 12,
     .over_charge_voltage = 14.4,
     .over_charge_return_voltage = 13.8,
     .over_discharge_voltage = 9.2,
     .over_discharge_return_voltage = 10.8,
     .nominal_capacity = 310,
-    .battery_type = 0x11, 
+    .battery_type = 0x11,
 };
 
 loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
@@ -71,8 +71,8 @@ loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
 };
 // ... (rest of the variables are unchanged) ...
 wifiConfig myWiFi = {
-    .ssid = "lekise_solar",   //lekise_solar
-    .password = "idealab2023",//idealab2023
+    .ssid = "1729",   //lekise_solar
+    .password = "88888888",//idealab2023
 };
 
 MqttConfig myMQTT = {
@@ -80,7 +80,7 @@ MqttConfig myMQTT = {
     .port = 1883,
     .username = "guest",
     .password = "LeKise&KMUTT",
-    .client_name = "test2"
+    .client_name = "test3"
 };
 int loaded_tud = 0;
 int loaded_pgr = 0;
