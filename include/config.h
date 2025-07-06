@@ -133,8 +133,27 @@ extern volatile bool taskDone;
 extern volatile uint8_t s;
 extern volatile int TimeStartNewCurrent;
 extern volatile bool NewCurrent;
-
-
+extern volatile bool Gain;
+extern float initial_SOC;
+extern float initial_SOC_E;
+extern float initial_batt_volt;
+extern float initial_ChangeWh;
+extern float final_SOC;
+extern float final_SOC_E;
+extern float final_batt_volt;
+extern float final_ChangeWh;
+extern volatile bool Gain_initial;
+extern volatile bool Gain_final;
+extern float Gain_SOC;
+extern float Gain_SOC_E;
+extern float Gain_SOC_batt_volt;
+extern float Gain_ChangeWh;
+extern float Wh_SOC;
+extern float Wh_SOC_E;
+extern float Full_Wh_E;
+extern float Full_Wh;
+extern float New_Wh_E;
+extern float New_Wh;
 // ─────────────── GLOBAL OBJECTS (EXTERN) ───────────────
 extern RTC_DS3231 rtc;
 extern HardwareSerial serial_port;

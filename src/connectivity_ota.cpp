@@ -181,6 +181,8 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
     doc["bt"] = battery_data.battery_temperature;
     doc["cw"] = battery_data.charge_wh;
     doc["bse"] = round(battery_data.battery_soc_estimated * 10) / 10.0;
+    doc["nw"] = New_Wh;
+    doc["nwe"] = New_Wh_E;
 
     char timestamp[25];
     snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 

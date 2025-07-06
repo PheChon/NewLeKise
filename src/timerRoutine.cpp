@@ -67,6 +67,7 @@ void slot_1_update_data()
 
     // Set charging profile once per day between 05:30 and 05:35
     bool is_profile_time = (time_data.hour == 5 && time_data.minute >= 30 && time_data.minute <= 35);
+    
     if (is_profile_time && !profile_updated_today)
     {
         setChargingProfile(time_data, &charge_profile);
@@ -74,6 +75,7 @@ void slot_1_update_data()
             setMaxChargeCurrent(charge_profile.max_charge_current);
         }
         profile_updated_today = true;
+        clearAccumulateData();
     }
 }
 
@@ -231,3 +233,63 @@ void slot_5_publish_data()
         Serial.println("❌ MQTT Publish Failed");
     }
 }
+
+// void slot_6_Load_Control()
+// {
+//     esp_task_wdt_reset();
+//     Serial.println("========== Slot 6: Load Control ===========================");
+
+//     if (solar_data.solar_voltage >= 10 && Gain)
+//     {
+//         initial_SOC = battery_data.battery_soc;
+//         initial_SOC_E = battery_data.battery_soc_estimated;
+//         initial_batt_volt = battery_data.battery_voltage;
+//         initial_ChangeWh = battery_data.charge_wh;
+//         Gain = false;
+//         Gain_initial = true;
+//     }
+
+//     if (solar_data.solar_voltage <= 10 && !Gain)
+//     {
+//         final_SOC = battery_data.battery_soc;
+//         final_SOC_E = battery_data.battery_soc_estimated;
+//         final_batt_volt = battery_data.battery_voltage;
+//         final_ChangeWh = battery_data.charge_wh;
+//         Gain = true;
+//         Gain_final = true;
+//     }
+
+//     if (Gain_initial && Gain_final )
+//     {
+//         Gain_SOC = final_SOC - initial_SOC;
+//         Gain_SOC_E = final_SOC_E - initial_SOC_E;
+//         Gain_SOC_batt_volt = final_batt_volt - initial_batt_volt;
+//         Gain_ChangeWh = final_ChangeWh - initial_ChangeWh;
+//         if (true)
+//         {
+//            Wh_SOC = Gain_ChangeWh/Gain_SOC;
+//            Wh_SOC_E = Gain_ChangeWh/Gain_SOC_E;
+//            if (true)
+//            {
+//               Full_Wh_E = Wh_SOC_E*100;
+//               Full_Wh = Wh_SOC*100;
+//               if (true)
+//               {
+//                 New_Wh_E = ((Full_Wh_E*final_SOC_E)-(75+50))/7;
+//                 New_Wh = ((Full_Wh*final_SOC)-(75+50))/7;
+//                 Gain_final = false;
+//                 Gain_initial = false;
+//                 Gain = true;
+//                 Gain_final = true;
+//               }
+              
+//            }
+           
+//         }
+        
+//     }
+    
+
+
+    
+// }

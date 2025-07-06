@@ -86,11 +86,12 @@ void loop()
     {
         esp_task_wdt_reset();
         switch (s) {
-            case 1:  slot_1_update_data();              break;
-            case 2:  slot_2_safety_checks();            break;
-            case 3:  slot_3_forecasting_and_adjustment(); break;
-            case 4:  slot_4_integration_check();        break;
-            case 5:  slot_5_publish_data();             break;
+            case 1:  slot_1_update_data();                  break;
+            case 2:  slot_2_safety_checks();                break;
+            case 3:  slot_3_forecasting_and_adjustment();   break;
+            case 4:  slot_4_integration_check();            break;
+            case 5:  slot_5_publish_data();                 break;
+            // case 6:  slot_6_Load_Control();                 break;
         }
         taskDone = true;
     }

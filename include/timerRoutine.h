@@ -14,5 +14,6 @@ void slot_2_safety_checks();
 void slot_3_forecasting_and_adjustment();
 void slot_4_integration_check();
 void slot_5_publish_data();
+// void slot_6_Load_Control();
 
 #endif // TIMER_ROUTINE_H
