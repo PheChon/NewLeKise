@@ -157,7 +157,7 @@ void keepWiFiMqttAlive(void *parameter)
 
 esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_data, const batteryDataPack &battery_data, const timeDataPack &time_data, const char *publish_topic)
 {
-    const uint16_t PACKAGE_SIZE = 512;
+    const uint16_t PACKAGE_SIZE = 1024;
     const TickType_t publishTimeout = pdMS_TO_TICKS(500);
 
     if (WiFi.status() != WL_CONNECTED || !client.connected())
@@ -165,7 +165,6 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
         return ESP_FAIL;
     }
 
-    // --- แก้ไขจาก StaticJsonDocument เป็น JsonDocument ---
     JsonDocument doc;
     
     doc["lv"] = load_data.load_voltage;
@@ -179,10 +178,20 @@ esp_err_t publishData(const loadDataPack &load_data, const solarDataPack &solar_
     doc["bc"] = battery_data.battery_current;
     doc["bs"] = battery_data.battery_soc;
     doc["bt"] = battery_data.battery_temperature;
-    doc["cw"] = battery_data.charge_wh;
+    doc["cw"] = battery_data.charge_wh; // Total Charge Wh (0x011C)
     doc["bse"] = round(battery_data.battery_soc_estimated * 10) / 10.0;
-    doc["nw"] = New_Wh;
-    doc["nwe"] = New_Wh_E;
+
+    // +++ START: เพิ่มค่าใหม่ลงใน JSON +++
+    doc["tcah"] = battery_data.total_charge_ah; // Total Charge Ah (0x0118)
+    doc["tdah"] = battery_data.total_discharge_ah; // Total Discharge Ah (0x011A)
+    // +++ END: เพิ่มค่าใหม่ลงใน JSON +++
+    
+    doc["nw"] = round(New_Wh * 100) / 100.0;
+    doc["nwe"] = round(New_Wh_E * 100) / 100.0;
+    doc["fwh"] = round(Full_Wh * 100) / 100.0;
+    doc["fwe"] = round(Full_Wh_E * 100) / 100.0;
+    doc["ce"] = round(current_energy * 100) / 100.0;
+    doc["cee"] = round(current_energy_E * 100) / 100.0;
 
     char timestamp[25];
     snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 

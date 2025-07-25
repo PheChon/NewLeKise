@@ -86,12 +86,14 @@ void loop()
     {
         esp_task_wdt_reset();
         switch (s) {
-            case 1:  slot_1_update_data();                  break;
-            case 2:  slot_2_safety_checks();                break;
-            case 3:  slot_3_forecasting_and_adjustment();   break;
-            case 4:  slot_4_integration_check();            break;
-            case 5:  slot_5_publish_data();                 break;
-            // case 6:  slot_6_Load_Control();                 break;
+            case 1:  slot_1_update_data();              break;
+            case 2:  slot_2_safety_checks();            break;
+            case 3:  slot_3_forecasting_and_adjustment(); break;
+            case 4:  slot_4_integration_check();        break;
+            case 5:  slot_5_publish_data();             break;
+            // +++ START: เพิ่ม case 6 +++
+            // case 6:  slot_6_Load_Control();             break;
+            // +++ END: เพิ่ม case 6 +++
         }
         taskDone = true;
     }
@@ -146,14 +148,12 @@ esp_err_t configSrne()
         Serial.println("   -> FAILED"); return ESP_FAIL;
     }
     vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
-
-    // +++ START: เพิ่มการเรียกใช้ฟังก์ชันใหม่ที่นี่ +++
+    
     Serial.printf("%d. Set Light Control Voltage\n", step);
     if (setLightControlVoltage(device_setting.voltage_light_control, step++) != ESP_OK) {
         Serial.println("   -> FAILED"); return ESP_FAIL;
     }
     vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay between major steps
-    // +++ END: เพิ่มการเรียกใช้ฟังก์ชันใหม่ที่นี่ +++
     
     Serial.printf("%d. Set Manual Mode\n", step);
     if (setManualMode(step++) != ESP_OK) {

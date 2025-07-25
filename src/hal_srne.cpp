@@ -17,7 +17,6 @@ static esp_err_t srneWriteData(uint8_t deviceAddress, uint16_t startAddress, uin
 static esp_err_t readDataWithRetry(uint16_t start_address, uint16_t *value, uint8_t max_retry, uint16_t retry_interval_ms);
 static esp_err_t readDataWithRetry32(uint16_t start_address, uint32_t *value, uint8_t max_retry, uint16_t retry_interval_ms);
 
-
 // --- Public Function Implementations ---
 
 esp_err_t setupSrne(uint8_t rx_pin, uint8_t tx_pin) {
@@ -50,7 +49,7 @@ esp_err_t writeDataWithRetry(uint16_t start_address, uint16_t value, uint8_t max
 // +++ START: เพิ่มฟังก์ชันใหม่ที่นี่ +++
 esp_err_t setLightControlVoltage(float voltage, uint8_t step_num) {
     const uint16_t address = 0xE01F; // Address for Light-control voltage 
-    uint16_t new_value = (uint16_t)round(voltage); // Multiplier is 1 [cite: 350]
+    uint16_t new_value = (uint16_t)round(voltage); // Multiplier is 1
     uint16_t current_value;
 
     if (readDataWithRetry(address, &current_value, MAX_RETRY, RETRY_INTERVAL_MS) == ESP_OK) {
@@ -546,6 +545,26 @@ esp_err_t clearAccumulateData() {
     }
     return ESP_FAIL;
 }
+// +++ START: เพิ่มฟังก์ชันใหม่ +++
+esp_err_t get_energy(batteryDataPack *battery_data) {
+    uint32_t buffer;
+    
+    // Read 0x0118: Total charge ampere hour of battery
+    if (readDataWithRetry32(0x0118, &buffer, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
+    battery_data->total_charge_ah = buffer;
+    vTaskDelay(pdMS_TO_TICKS(COMMAND_INTERVAL_MS));
+
+    // Read 0x011A: Total discharge ampere hour of battery
+    if (readDataWithRetry32(0x011A, &buffer, MAX_RETRY, RETRY_INTERVAL_MS) != ESP_OK) return ESP_FAIL;
+    battery_data->total_discharge_ah = buffer;
+    vTaskDelay(pdMS_TO_TICKS(COMMAND_INTERVAL_MS));
+    
+    // The value from 0x011C is already read by getChargeWh(), which is also called in slot_1
+    
+    return ESP_OK;
+}
+// +++ END: เพิ่มฟังก์ชันใหม่ +++
+
 static esp_err_t readDataWithRetry(uint16_t start_address, uint16_t *value, uint8_t max_retry, uint16_t retry_interval_ms) {
     uint8_t attempts = 0;
     uint8_t responseBuffer[2] = {0};

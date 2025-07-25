@@ -14,6 +14,9 @@ void slot_2_safety_checks();
 void slot_3_forecasting_and_adjustment();
 void slot_4_integration_check();
 void slot_5_publish_data();
-// void slot_6_Load_Control();
+
+// +++ START: เพิ่มการประกาศฟังก์ชันใหม่ +++
+void slot_6_Load_Control();
+// +++ END: เพิ่มการประกาศฟังก์ชันใหม่ +++
 
 #endif // TIMER_ROUTINE_H

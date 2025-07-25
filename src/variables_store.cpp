@@ -2,8 +2,6 @@
 
 #include "config.h"
 
-// ─────────────── GLOBAL STATE VARIABLE DEFINITIONS ───────────────
-// ... (other variables are unchanged) ...
 batteryDataPack battery_data = {
     .battery_voltage = 0.0,
     .battery_current = 0.0,
@@ -11,6 +9,11 @@ batteryDataPack battery_data = {
     .battery_temperature = 0,
     .charge_wh = 0,
     .last_charge_wh = 0,
+    .battery_soc_estimated = 0.0,
+    // +++ START: เพิ่มค่าเริ่มต้นให้ตัวแปรใหม่ +++
+    .total_charge_ah = 0,
+    .total_discharge_ah = 0,
+    // +++ END: เพิ่มค่าเริ่มต้นให้ตัวแปรใหม่ +++
 };
 
 solarDataPack solar_data = {
@@ -48,19 +51,19 @@ chargingProfilePack charge_profile = {
 deviceSettingPack device_setting = {
     .max_load_current = 1.15,
     .load_percentage = 100,
-    .voltage_light_control = 10.0,
+    .voltage_light_control = 10.0, 
     .voltage_system = 12,
     .over_charge_voltage = 14.4,
     .over_charge_return_voltage = 13.8,
-    .over_discharge_voltage = 9.2,
-    .over_discharge_return_voltage = 10.8,
+    .over_discharge_voltage = 10.2,
+    .over_discharge_return_voltage = 12.0,
     .nominal_capacity = 310,
-    .battery_type = 0x11,
+    .battery_type = 0x11, 
 };
 
 loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
     {1, 10800, 100, 100}, // 3 h 25w
-    {2, 32400, 56, 56}, // 7 h 14w
+    {2, 25200, 56, 56}, // 7 h 14w
     {3, 7200, 100, 100},  // 2 h 25w
     {4, 0, 0, 0},
     {5, 0, 0, 0},
@@ -69,10 +72,10 @@ loadScheduleSettingPack load_schedule[SCHEDULE_SLOT_COUNT] = {
     {8, 0, 0, 0},
     {9, 0, 0, 0},
 };
-// ... (rest of the variables are unchanged) ...
+
 wifiConfig myWiFi = {
-    .ssid = "1729",   //lekise_solar
-    .password = "88888888",//idealab2023
+    .ssid = "lekise_solar",   //lekise_solar
+    .password = "idealab2023",//idealab2023
 };
 
 MqttConfig myMQTT = {
@@ -80,7 +83,7 @@ MqttConfig myMQTT = {
     .port = 1883,
     .username = "guest",
     .password = "LeKise&KMUTT",
-    .client_name = "test3"
+    .client_name = "test2"
 };
 int loaded_tud = 0;
 int loaded_pgr = 0;
@@ -90,24 +93,12 @@ volatile bool taskDone = true;
 volatile uint8_t s = 0;
 volatile int TimeStartNewCurrent = 0;
 volatile bool NewCurrent = false;
-volatile bool Gain = true;
-float initial_SOC = 0 ;
-float initial_SOC_E = 0;
-float initial_batt_volt = 0;
-float initial_ChangeWh = 0;
-float final_SOC = 0;
-float final_SOC_E = 0;
-float final_batt_volt = 0;
-float final_ChangeWh = 0;
-volatile bool Gain_initial;
-volatile bool Gain_final;
-float Gain_SOC = 0;
-float Gain_SOC_E = 0;
-float Gain_SOC_batt_volt = 0;
-float Gain_ChangeWh = 0;
-float Wh_SOC = 0;
-float Wh_SOC_E = 0;
-float Full_Wh_E = 0;
-float Full_Wh = 0;
-float New_Wh_E = 0;
-float New_Wh = 0;
+
+// +++ START: เพิ่ม/แก้ไขตัวแปรใหม่ +++
+float New_Wh = 0.0;
+float New_Wh_E = 0.0;
+float Full_Wh = 0.0;
+float Full_Wh_E = 0.0;
+float current_energy = 0.0;
+float current_energy_E = 0.0;
+// +++ END: เพิ่ม/แก้ไขตัวแปรใหม่ +++

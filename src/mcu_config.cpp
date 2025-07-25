@@ -14,10 +14,12 @@ void IRAM_ATTR timer5s()
 {
     taskDone = false;
     s++;
-    if (s > 12)
+    // +++ START: แก้ไขรอบของ Timer +++
+    if (s > 6) // เดิมคือ 12, แก้เป็น 6 เพื่อให้วนครบ 6 slots
     {
         s = 1;
     }
+    // +++ END: แก้ไขรอบของ Timer +++
     if (load_data.load_current > 0.1) // Use a small threshold to account for noise
     {
         TimeStartNewCurrent++;

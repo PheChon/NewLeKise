@@ -2,8 +2,6 @@
 
 #include "timerRoutine.h"
 
-// ... (slot_1, slot_2, slot_3, slot_4 are unchanged) ...
-
 void slot_1_update_data()
 {
     esp_task_wdt_reset();
@@ -14,14 +12,12 @@ void slot_1_update_data()
 
     getCurrentTime(&time_data);
 
-    // --- Print Current Time ---
     Serial.println("Current Time:");
-    Serial.printf("  %02d/%02d/%04d %02d:%02d:%02d\n", 
-                  time_data.day, time_data.month, time_data.year, 
+    Serial.printf("  %02d/%02d/%04d %02d:%02d:%02d\n",
+                  time_data.day, time_data.month, time_data.year,
                   time_data.hour, time_data.minute, time_data.second);
     Serial.println("------------------------------------------------------------");
 
-    // --- Get and Print Load Data ---
     if (getLoadInfo(&load_data) == ESP_OK && getLoadWh(&load_data) == ESP_OK)
     {
         Serial.println("Load Data:");
@@ -31,7 +27,6 @@ void slot_1_update_data()
         Serial.println("------------------------------------------------------------");
     }
 
-    // --- Get and Print Solar Data ---
     if (getSolarInfo(&solar_data) == ESP_OK)
     {
         Serial.println("------------------------------------------------------------");
@@ -42,10 +37,8 @@ void slot_1_update_data()
         Serial.println("------------------------------------------------------------");
     }
 
-    // --- Get and Print Battery Data ---
-    // เรียก getBatteryInfo เพื่อเอาค่า SOC จาก Controller
-    // และเรียก updateEstimatedSOC เพื่อคำนวณ SOC จาก Voltage
-    if (getBatteryInfo(&battery_data) == ESP_OK && getChargeWh(&battery_data) == ESP_OK && updateEstimatedSOC(&battery_data) == ESP_OK)
+    // --- แก้ไขเงื่อนไขและเพิ่มการแสดงผล ---
+    if (getBatteryInfo(&battery_data) == ESP_OK && getChargeWh(&battery_data) == ESP_OK && updateEstimatedSOC(&battery_data) == ESP_OK && get_energy(&battery_data) == ESP_OK)
     {
         Serial.println("------------------------------------------------------------");
         Serial.println("Battery Data:");
@@ -54,20 +47,21 @@ void slot_1_update_data()
         Serial.printf("  SOC (From Controller)  : %d %%\n", battery_data.battery_soc);
         Serial.printf("  SOC (Estimated)        : %.1f %%\n", battery_data.battery_soc_estimated);
         Serial.printf("  Temp                   : %d °C\n", battery_data.battery_temperature);
-        Serial.printf("  Charge Wh              : %lu Wh\n", battery_data.charge_wh);
+        Serial.printf("  Total Charge (Wh)      : %lu Wh\n", battery_data.charge_wh); // Address 0x011C
+        // +++ START: เพิ่มการแสดงผลค่าใหม่ +++
+        Serial.printf("  Total Charge (Ah)      : %lu Ah\n", battery_data.total_charge_ah); // Address 0x0118
+        Serial.printf("  Total Discharge (Ah)   : %lu Ah\n", battery_data.total_discharge_ah); // Address 0x011A
+        // +++ END: เพิ่มการแสดงผลค่าใหม่ +++
         Serial.println("-----------------------------------------------------------");
     }
 
     // --- Handle Profile Update Logic ---
-    // Reset daily flags
     if (time_data.day != last_day_checked) {
         profile_updated_today = false;
         last_day_checked = time_data.day;
     }
 
-    // Set charging profile once per day between 05:30 and 05:35
     bool is_profile_time = (time_data.hour == 5 && time_data.minute >= 30 && time_data.minute <= 35);
-    
     if (is_profile_time && !profile_updated_today)
     {
         setChargingProfile(time_data, &charge_profile);
@@ -75,7 +69,6 @@ void slot_1_update_data()
             setMaxChargeCurrent(charge_profile.max_charge_current);
         }
         profile_updated_today = true;
-        clearAccumulateData();
     }
 }
 
@@ -93,7 +86,7 @@ void slot_2_safety_checks()
     float last_max_charge_current = charge_profile.max_charge_current;
 
     // Safety: If SOC is full during the day, stop charging
-    if (is_day_time && battery_data.battery_voltage >= 14 && !soc_max_reached && integrated)
+    if (is_day_time && battery_data.battery_voltage >= 13.9 && !soc_max_reached && integrated)
     {
         if (setMaxChargeCurrent(0.0) == ESP_OK) {
             soc_max_reached = true;
@@ -161,7 +154,7 @@ void slot_3_forecasting_and_adjustment()
         load_data.last_load_wh = load_data.load_wh;
         load_wh_captured = true;
     }
-    
+
     if (charge_wh_captured && load_wh_captured)
     {
         if (first_forecast_run) {
@@ -177,7 +170,7 @@ void slot_3_forecasting_and_adjustment()
         charge_wh_captured = false;
         load_wh_captured = false;
     }
-    
+
     bool is_peak_temp_time = (time_data.hour >= 12 && time_data.hour <= 15);
     bool is_soc_high = (battery_data.battery_soc >= (charge_profile.max_soc - 15));
     if (is_peak_temp_time && is_soc_high && battery_data.battery_temperature >= 65 && !overheated_mode && integrated)
@@ -223,9 +216,8 @@ void slot_5_publish_data()
 {
     esp_task_wdt_reset();
     Serial.println("========== Slot 5: Publishing Data ===========================");
-    const char *publish_topic = "test/data/up3";
-    
-    // --- CORRECTED FUNCTION CALL ---
+    const char *publish_topic = "test/data/up2";
+
     if (publishData(load_data, solar_data, battery_data, time_data, publish_topic) == ESP_OK)
     {
         Serial.println("✅ MQTT Publish Successful");
@@ -237,59 +229,88 @@ void slot_5_publish_data()
 // void slot_6_Load_Control()
 // {
 //     esp_task_wdt_reset();
-//     Serial.println("========== Slot 6: Load Control ===========================");
+//     Serial.println("========== Slot 6: Load Control & Energy Calculation ==========");
 
-//     if (solar_data.solar_voltage >= 10 && Gain)
+//     // ใช้ static variables เพื่อเก็บค่าสถานะระหว่างการเรียกใช้ฟังก์ชัน
+//     static float initial_SOC = 0, final_SOC = 0;
+//     static float initial_SOC_E = 0, final_SOC_E = 0;
+//     static uint32_t initial_ChangeWh = 0, final_ChangeWh = 0;
+
+//     // State machine: 0 = รอเริ่มต้นวัน (กลางคืน), 1 = รอสิ้นสุดวัน (กลางวัน)
+//     static int calculation_state = 0;
+
+//     // +++ START: เพิ่ม Code สำหรับ Debug +++
+//     Serial.printf("[DEBUG] Current State: %d, Solar Voltage: %.2fV\n", calculation_state, solar_data.solar_voltage);
+//     // +++ END: เพิ่ม Code สำหรับ Debug +++
+
+//     // State 0: รอให้พระอาทิตย์ขึ้น (solar_voltage >= 10V)
+//     if (calculation_state == 0 && solar_data.solar_voltage >= 10.0)
 //     {
+//         Serial.println("[SLOT 6] Day started. Capturing initial SOC and Wh.");
 //         initial_SOC = battery_data.battery_soc;
 //         initial_SOC_E = battery_data.battery_soc_estimated;
-//         initial_batt_volt = battery_data.battery_voltage;
+//         getChargeWh(&battery_data); // อ่านค่า charge_wh ล่าสุด
 //         initial_ChangeWh = battery_data.charge_wh;
-//         Gain = false;
-//         Gain_initial = true;
-//     }
 
-//     if (solar_data.solar_voltage <= 10 && !Gain)
+//         // +++ START: เพิ่ม Code สำหรับ Debug +++
+//         Serial.printf("[DEBUG] Initial values captured: SOC=%.0f, SOC_E=%.1f, ChargeWh=%u\n", initial_SOC, initial_SOC_E, initial_ChangeWh);
+//         // +++ END: เพิ่ม Code สำหรับ Debug +++
+
+//         calculation_state = 1; // เปลี่ยน state เป็น "รอสิ้นสุดวัน"
+//     }
+//     // State 1: รอให้พระอาทิตย์ตก (solar_voltage < 10V)
+//     else if (calculation_state == 1 && solar_data.solar_voltage < 10.0)
 //     {
+//         Serial.println("[SLOT 6] Day ended. Capturing final state and calculating.");
 //         final_SOC = battery_data.battery_soc;
 //         final_SOC_E = battery_data.battery_soc_estimated;
-//         final_batt_volt = battery_data.battery_voltage;
+//         getChargeWh(&battery_data); // อ่านค่า charge_wh ล่าสุด
 //         final_ChangeWh = battery_data.charge_wh;
-//         Gain = true;
-//         Gain_final = true;
-//     }
 
-//     if (Gain_initial && Gain_final )
-//     {
-//         Gain_SOC = final_SOC - initial_SOC;
-//         Gain_SOC_E = final_SOC_E - initial_SOC_E;
-//         Gain_SOC_batt_volt = final_batt_volt - initial_batt_volt;
-//         Gain_ChangeWh = final_ChangeWh - initial_ChangeWh;
-//         if (true)
+//         float Gain_SOC = final_SOC - initial_SOC;
+//         float Gain_SOC_E = final_SOC_E - initial_SOC_E;
+//         uint32_t Gain_ChangeWh = final_ChangeWh - initial_ChangeWh;
+
+//         // +++ START: เพิ่ม Code สำหรับ Debug +++
+//         Serial.println("--- Values for Calculation Check ---");
+//         Serial.printf("Final SOC: %.0f, Initial SOC: %.0f, Gain_SOC: %.1f\n", final_SOC, initial_SOC, Gain_SOC);
+//         Serial.printf("Final SOC_E: %.1f, Initial SOC_E: %.1f, Gain_SOC_E: %.2f\n", final_SOC_E, initial_SOC_E, Gain_SOC_E);
+//         Serial.println("------------------------------------");
+//         // +++ END: เพิ่ม Code สำหรับ Debug +++
+
+
+//         // ป้องกันการหารด้วยศูนย์ ถ้า SOC ไม่มีการเปลี่ยนแปลง
+//         if (Gain_SOC > 0 && Gain_SOC_E > 0)
 //         {
-//            Wh_SOC = Gain_ChangeWh/Gain_SOC;
-//            Wh_SOC_E = Gain_ChangeWh/Gain_SOC_E;
-//            if (true)
-//            {
-//               Full_Wh_E = Wh_SOC_E*100;
-//               Full_Wh = Wh_SOC*100;
-//               if (true)
-//               {
-//                 New_Wh_E = ((Full_Wh_E*final_SOC_E)-(75+50))/7;
-//                 New_Wh = ((Full_Wh*final_SOC)-(75+50))/7;
-//                 Gain_final = false;
-//                 Gain_initial = false;
-//                 Gain = true;
-//                 Gain_final = true;
-//               }
-              
-//            }
-           
+//             // คำนวณหาว่า 1% SOC เทียบเท่ากับกี่ Wh
+//             float Wh_per_SOC = (float)Gain_ChangeWh / Gain_SOC;
+//             float Wh_per_SOC_E = (float)Gain_ChangeWh / Gain_SOC_E;
+
+//             // --- เก็บค่าที่คำนวณได้ลงตัวแปรส่วนกลาง ---
+//             Full_Wh = Wh_per_SOC * 100.0;
+//             Full_Wh_E = Wh_per_SOC_E * 100.0;
+
+//             current_energy = (Full_Wh * final_SOC) / 100.0;
+//             current_energy_E = (Full_Wh_E * final_SOC_E) / 100.0;
+
+//             New_Wh = current_energy - (75.0 + 50.0);
+//             New_Wh_E = current_energy_E - (75.0 + 50.0);
+
+//             if (New_Wh < 0) New_Wh = 0;
+//             if (New_Wh_E < 0) New_Wh_E = 0;
+
+//             Serial.printf("[SLOT 6] Energy Gained: %u Wh\n", Gain_ChangeWh);
+//             Serial.printf("[SLOT 6] SOC Gained: %.1f %%\n", Gain_SOC);
+//             Serial.printf("[SLOT 6] Wh per 1%% SOC: %.2f Wh\n", Wh_per_SOC);
+//             Serial.printf("[SLOT 6] Calculated Total Capacity: %.2f Wh\n", Full_Wh);
+//             Serial.printf("[SLOT 6] Current Energy: %.2f Wh\n", current_energy);
+//             Serial.printf("[SLOT 6] New Target Wh for night: %.2f Wh\n", New_Wh);
 //         }
-        
+//         else
+//         {
+//             Serial.println("[SLOT 6] Calculation skipped: SOC did not increase.");
+//         }
+
+//         calculation_state = 0; // รีเซ็ต State machine เพื่อรอวันถัดไป
 //     }
-    
-
-
-    
 // }

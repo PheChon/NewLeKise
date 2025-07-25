@@ -15,6 +15,7 @@
 #include "esp_task_wdt.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
+#include <ArduinoJson.h>
 
 // ─────────────── PIN CONFIGURATION ───────────────
 const uint8_t LED_PIN = 2;
@@ -28,7 +29,6 @@ const uint8_t EXTERNAL_INTERRUPT_PIN = 27;
 const uint8_t SCHEDULE_SLOT_COUNT = 9;
 
 // ─────────────── DATA STRUCTURES ───────────────
-// ... (struct definitions are unchanged) ...
 struct batteryDataPack
 {
     float battery_voltage;
@@ -38,6 +38,10 @@ struct batteryDataPack
     uint32_t charge_wh;
     uint32_t last_charge_wh;
     float battery_soc_estimated; 
+    // +++ START: เพิ่มตัวแปรสำหรับเก็บค่าพลังงานสะสม +++
+    uint32_t total_charge_ah;
+    uint32_t total_discharge_ah;
+    // +++ END: เพิ่มตัวแปรสำหรับเก็บค่าพลังงานสะสม +++
 };
 
 struct solarDataPack
@@ -114,7 +118,6 @@ struct MqttConfig
 };
 
 // ─────────────── GLOBAL STATE VARIABLES (EXTERN) ───────────────
-// The actual variables are defined in variables_store.cpp
 extern batteryDataPack battery_data;
 extern solarDataPack solar_data;
 extern loadDataPack load_data;
@@ -133,27 +136,17 @@ extern volatile bool taskDone;
 extern volatile uint8_t s;
 extern volatile int TimeStartNewCurrent;
 extern volatile bool NewCurrent;
-extern volatile bool Gain;
-extern float initial_SOC;
-extern float initial_SOC_E;
-extern float initial_batt_volt;
-extern float initial_ChangeWh;
-extern float final_SOC;
-extern float final_SOC_E;
-extern float final_batt_volt;
-extern float final_ChangeWh;
-extern volatile bool Gain_initial;
-extern volatile bool Gain_final;
-extern float Gain_SOC;
-extern float Gain_SOC_E;
-extern float Gain_SOC_batt_volt;
-extern float Gain_ChangeWh;
-extern float Wh_SOC;
-extern float Wh_SOC_E;
-extern float Full_Wh_E;
-extern float Full_Wh;
-extern float New_Wh_E;
+
+// +++ START: เพิ่ม/แก้ไขตัวแปรใหม่ +++
 extern float New_Wh;
+extern float New_Wh_E;
+extern float Full_Wh;
+extern float Full_Wh_E;
+extern float current_energy;
+extern float current_energy_E;
+// +++ END: เพิ่ม/แก้ไขตัวแปรใหม่ +++
+
+
 // ─────────────── GLOBAL OBJECTS (EXTERN) ───────────────
 extern RTC_DS3231 rtc;
 extern HardwareSerial serial_port;
