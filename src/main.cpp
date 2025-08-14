@@ -128,6 +128,7 @@ void loop()
 
 esp_err_t configSrne()
 {
+    
     Serial.println("--- Starting SRNE Configuration ---");
     uint8_t step = 1;
 
@@ -175,6 +176,7 @@ esp_err_t configSrne()
     vTaskDelay(pdMS_TO_TICKS(500)); // Add delay between major steps
     
     Serial.println("--- SRNE Configuration Finished ---");
+
     return ESP_OK;
 }
 void demoLoadRampDown() {

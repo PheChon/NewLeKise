@@ -83,7 +83,7 @@ MqttConfig myMQTT = {
     .port = 1883,
     .username = "guest",
     .password = "LeKise&KMUTT",
-    .client_name = "test2"
+    .client_name = "test1"
 };
 int loaded_tud = 0;
 int loaded_pgr = 0;

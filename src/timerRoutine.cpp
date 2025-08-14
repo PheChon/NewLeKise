@@ -82,20 +82,20 @@ void slot_2_safety_checks()
 
     Serial.println("========== Slot 2: Real-time Safety & SOC Checks =============");
 
-    bool is_day_time = (time_data.hour >= 6 && time_data.hour <= 17);
+    //bool is_day_time = (time_data.hour >= 6 && time_data.hour <= 17);
     float last_max_charge_current = charge_profile.max_charge_current;
 
     // Safety: If SOC is full during the day, stop charging
-    if (is_day_time && battery_data.battery_voltage >= 13.9 && !soc_max_reached && integrated)
+    if ( battery_data.battery_soc_estimated >= 90 && !soc_max_reached && integrated)//is_day_time && battery_data.battery_voltage >= 13.9 && !soc_max_reached && integrated
     {
         if (setMaxChargeCurrent(0.0) == ESP_OK) {
             soc_max_reached = true;
             Serial.println("SOC Max reached. Charging stopped.");
         }
     }
-    else if (!is_day_time && soc_max_reached) {
-        soc_max_reached = false; // Reset for the next day
-    }
+    // else if (!is_day_time && soc_max_reached) {
+    //     soc_max_reached = false; // Reset for the next day
+    // }
 
     // Mid-day SOC check to boost charging if needed
     bool is_rainy_season = (charge_profile.profile_number == 2);
@@ -120,11 +120,11 @@ void slot_2_safety_checks()
     }
 
     // Apply any current changes from the mid-day check
-    if (is_day_time && abs(charge_profile.max_charge_current - last_max_charge_current) > 0.01 && integrated)
-    {
-        setMaxChargeCurrent(charge_profile.max_charge_current);
-        Serial.printf("Mid-day SOC boost. Set charge current to %.2fA\n", charge_profile.max_charge_current);
-    }
+    // if (is_day_time && abs(charge_profile.max_charge_current - last_max_charge_current) > 0.01 && integrated)
+    // {
+    //     setMaxChargeCurrent(charge_profile.max_charge_current);
+    //     Serial.printf("Mid-day SOC boost. Set charge current to %.2fA\n", charge_profile.max_charge_current);
+    // }
 }
 
 void slot_3_forecasting_and_adjustment()
@@ -216,7 +216,7 @@ void slot_5_publish_data()
 {
     esp_task_wdt_reset();
     Serial.println("========== Slot 5: Publishing Data ===========================");
-    const char *publish_topic = "test/data/up2";
+    const char *publish_topic = "test/data/up1";
 
     if (publishData(load_data, solar_data, battery_data, time_data, publish_topic) == ESP_OK)
     {
